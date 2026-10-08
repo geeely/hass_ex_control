@@ -103,3 +103,9 @@ The card's layout is adapted from the BMW CarData integration's vehicle card
   Home Assistant's go2rtc on loopback; the secret is random per start.
 - New viewers get everything since the last key frame first, so they start
   at once.
+
+## Licence
+
+MIT, see `LICENSE`. The dashboard card's layout code is adapted from the BMW
+CarData card and stays under its BSD 2-clause licence
+(`custom_components/ex_control/frontend/LICENSE-bmw-cardata.txt`).

@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EX Control",
+        "menu_options": {
+          "hub": "Cars connect by themselves (recommended)",
+          "camera": "Live camera only (older car app)"
+        }
+      },
+      "hub": {
+        "title": "EX Control",
+        "description": "Each car adds itself the first time it connects: its readings, controls, location and live camera, together on one device per car. On the car, switch on Home Assistant and leave \"Use the EX Control integration\" on."
+      },
+      "camera": {
+        "title": "EX Control live camera",
+        "description": "For a car whose app does not yet connect to this integration. The car sends its cameras here when you pick one on its Camera control. Use the same stream name as the car's Live camera settings.",
+        "data": {
+          "stream": "Stream name"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Already set up."
+    }
+  },
+  "issues": {
+    "old_mobile_app": {
+      "title": "{car} still has its old mobile app device",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove the old device for {car}?",
+            "description": "{car} now reports through EX Control, so the mobile app device \"{old}\" no longer updates. Removing it also removes the template controls that one-tap setup put on it, and gives EX Control's entities their names back (sensor.geely_battery instead of sensor.geely_battery_2), so dashboards keep working where names match.\n\nThe hidden input helpers it used are left in place; delete them under Settings > Helpers if you like."
+          }
+        }
+      }
+    }
+  }
+}

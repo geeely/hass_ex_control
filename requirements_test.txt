@@ -1,0 +1,10 @@
+# Python 3.13. Run from ha-integration/: python -m pytest
+pytest-homeassistant-custom-component
+ha-ffmpeg
+PyTurboJPEG
+hassil==3.5.0
+home-assistant-intents==2026.1.28
+mutagen
+pymicro-vad
+pyspeex-noise
+PyNaCl

@@ -52,7 +52,7 @@ blank.
 
 The integration also ships a Lovelace card and registers it for you (Settings
 > Dashboards > Resources shows `/ex_control/ex-control-vehicle-card.js`). Add it
-from the card picker (**EX Control Vehicle**) or in YAML:
+from the card picker (search **Geely**: the card is **Geely EX2 (EX Control)**) or in YAML:
 
 ```yaml
 type: custom:ex-control-vehicle-card

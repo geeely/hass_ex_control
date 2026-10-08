@@ -1129,8 +1129,10 @@ const cards = ensureCustomCardsArray();
 if (!cards.some((c) => c && c.type === CARD_TAG)) {
   cards.push({
     type: CARD_TAG,
-    name: "EX Control Vehicle",
-    description: "Your EX2 in its own paint, with lock, charge and climate state, battery, range, map and quick info",
+    // The picker searches name and description: "geely", "ex2", "e2" and
+    // "xingyuan" all have to find it.
+    name: "Geely EX2 (EX Control)",
+    description: "Geely EX2 / E2 / Xingyuan car card: picture in your paint colour, lock, charging and climate state, battery, range, map and quick info.",
     preview: true,
   });
 }

@@ -23,6 +23,11 @@ async def async_setup_entry(
     )
 
 
+# HA rounds some device classes to whole numbers by default (12.6 V shows
+# as 13 V); the car sends one decimal for these, so show it.
+ONE_DECIMAL = {"V", "kW", "kWh", "°C", "kWh/100km", "A"}
+
+
 def _enum(cls: type, value: str | None) -> Any:
     try:
         return cls(value) if value else None
@@ -39,6 +44,8 @@ class CarSensor(CarEntity, RestoreSensor):
         self._attr_native_unit_of_measurement = desc.get("unit")
         self._attr_device_class = _enum(SensorDeviceClass, desc.get("device_class"))
         self._attr_state_class = _enum(SensorStateClass, desc.get("state_class"))
+        if desc.get("unit") in ONE_DECIMAL:
+            self._attr_suggested_display_precision = 1
         self._restored: Any = None
 
     async def async_added_to_hass(self) -> None:

@@ -9,10 +9,11 @@
  * Huberts. Its licence and disclaimer are in LICENSE-bmw-cardata.txt beside
  * this file and must ship with it.
  *
- * The car picture is our own drawing of the Geely EX2 (E2 / Xingyuan), not
- * Geely artwork: the body is one SVG path filled with a CSS variable, so any
- * paint, factory or custom, is just a colour. A photo can replace it
- * (image_url) for anyone who prefers their own.
+ * The car picture is a photo of the EX2, recoloured in the browser: the
+ * paint mask (ex2-mask.png, red = paint, green = roof) says which pixels are
+ * body paint, and each is re-tinted to the chosen colour keeping the photo's
+ * own shading and highlights. Any paint, factory or custom, is just a colour.
+ * A photo of your own can replace it (image_url).
  */
 
 const WS_TYPE = "ex_control/vehicles";
@@ -221,7 +222,7 @@ const TRANSLATIONS = {
     "editor.roof_body": "Body colour",
     "editor.roof_black": "Black (two-tone)",
     "editor.paint_custom_option": "Custom…",
-    "editor.image_url": "Photo instead of the drawing (URL, optional)",
+    "editor.image_url": "Your own photo instead (URL, optional)",
     "editor.show_indicators": "Show indicator row",
     "editor.show_range": "Show battery and range bar",
     "editor.show_image": "Show car picture",
@@ -253,83 +254,72 @@ const humanizeLocationState = (rawState, t) => {
   return String(rawState).replaceAll("_", " ");
 };
 
-/* The Geely EX2 from the side, front to the right, drawn to its real
- * proportions (4135 mm long, 2650 mm wheelbase, 1573 mm tall). Paint and
- * roof come from --ex-paint / --ex-roof; the shading on top is fixed white
- * and black at low opacity, so it reads on any paint. */
-const carSvg = (uid) => {
-  const wheel = (cx) => `
-    <g transform="translate(${cx} 245)">
-      <circle r="57" fill="#141518"/>
-      <circle r="51" fill="none" stroke="#25272c" stroke-width="2"/>
-      <circle r="41" fill="url(#${uid}-rim)"/>
-      ${[0, 72, 144, 216, 288].map((a) => `<path transform="rotate(${a}) scale(1.08)" d="M -7,-34 C -13,-22 -12,-13 -5,-11 L 5,-11 C 12,-13 13,-22 7,-34 Z" fill="#2b2e33"/>`).join("")}
-      <circle r="41" fill="none" stroke="#5d636a" stroke-width="1.5"/>
-      <circle r="8" fill="#c9cdd2" stroke="#6b7077" stroke-width="1.5"/>
-    </g>`;
-  const body = "M 60,275 C 54,262 50,240 50,214 C 50,192 52,172 57,156 C 62,128 70,86 80,56 C 84,46 92,41 106,40 C 200,35 320,34 392,38 C 408,39 418,44 428,52 C 470,84 512,112 556,128 C 620,136 680,144 714,158 C 736,168 748,184 751,206 C 753,226 752,250 746,268 C 744,273 740,275 734,275 L 671,275 A 64 64 0 1 0 559,275 L 223,275 A 64 64 0 1 0 111,275 Z";
-  const roof = "M 80,56 C 84,46 92,41 106,40 C 200,35 320,34 392,38 C 408,39 418,44 428,52 C 470,84 512,112 556,128 L 540,130 L 424,64 C 418,58 410,54 398,54 L 130,56 C 114,56 104,64 100,76 L 92,108 L 76,110 Z";
-  const dlo = "M 540,130 L 424,64 C 418,58 410,54 398,54 L 130,56 C 114,56 104,64 100,76 L 92,108 C 90,118 94,124 104,124 Z";
-  return `
-  <svg viewBox="30 20 740 295" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geely EX2">
-    <defs>
-      <linearGradient id="${uid}-shade" x1="0" y1="34" x2="0" y2="275" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#fff" stop-opacity=".34"/>
-        <stop offset=".32" stop-color="#fff" stop-opacity=".14"/>
-        <stop offset=".47" stop-color="#fff" stop-opacity="0"/>
-        <stop offset=".6" stop-color="#000" stop-opacity="0"/>
-        <stop offset="1" stop-color="#000" stop-opacity=".42"/>
-      </linearGradient>
-      <linearGradient id="${uid}-glass" x1="0" y1="52" x2="0" y2="130" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#3a4250"/>
-        <stop offset=".55" stop-color="#151a22"/>
-        <stop offset="1" stop-color="#0c0f14"/>
-      </linearGradient>
-      <radialGradient id="${uid}-rim" cx=".4" cy=".35" r=".75">
-        <stop offset="0" stop-color="#eef0f3"/>
-        <stop offset=".7" stop-color="#a9aeb5"/>
-        <stop offset="1" stop-color="#7d838b"/>
-      </radialGradient>
-      <filter id="${uid}-blur" x="-10%" y="-200%" width="120%" height="500%"><feGaussianBlur stdDeviation="6"/></filter>
-      <filter id="${uid}-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      <clipPath id="${uid}-clip"><path d="${body}"/></clipPath>
-    </defs>
-    <ellipse cx="400" cy="301" rx="350" ry="9" fill="#000" opacity=".38" filter="url(#${uid}-blur)"/>
-    <path class="paint" d="${body}" fill="var(--ex-paint, #e9e9e4)"/>
-    <path class="roof" d="${roof}" fill="var(--ex-roof, var(--ex-paint, #e9e9e4))"/>
-    <g clip-path="url(#${uid}-clip)">
-      <rect x="40" y="30" width="720" height="250" fill="url(#${uid}-shade)"/>
-      <path d="M 64,150 C 250,149 500,151 712,160" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.6"/>
-      <path d="M 66,154 C 250,153 500,155 710,164" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="2"/>
-      <path d="M 232,236 C 350,232 460,232 556,236" fill="none" stroke="#000" stroke-opacity=".16" stroke-width="2.5"/>
-      <path d="M 53,256 L 104,262 L 111,275 L 50,275 Z" fill="#1b1d21"/>
-      <path d="M 704,262 L 752,254 L 752,275 L 671,275 Z" fill="#1b1d21"/>
-      <path d="M 223,275 L 228,263 L 554,263 L 559,275 Z" fill="#1b1d21"/>
-    </g>
-    <path d="M 671,275 A 64 64 0 1 0 559,275" fill="none" stroke="#1b1d21" stroke-width="9"/>
-    <path d="M 223,275 A 64 64 0 1 0 111,275" fill="none" stroke="#1b1d21" stroke-width="9"/>
-    <path d="${dlo}" fill="url(#${uid}-glass)"/>
-    <path d="M 64,142 C 68,112 74,84 82,60 L 94,58 C 88,84 82,112 76,140 Z" fill="#11151b"/>
-    <path d="M 296,55 L 309,55 L 307,127 L 294,127 Z" fill="#101317"/>
-    <path d="M 160,56 L 173,56 L 151,125 L 138,125 Z" fill="#101317"/>
-    <path d="M 100,76 C 104,64 114,56 130,56 L 398,54 C 410,54 418,58 424,64" fill="none" stroke="#dfe3e8" stroke-opacity=".7" stroke-width="1.5"/>
-    <g fill="none" stroke="#000" stroke-opacity=".32" stroke-width="1.2">
-      <path d="M 301,128 L 303,262"/>
-      <path d="M 538,132 C 545,170 546,212 540,234"/>
-      <path d="M 150,126 C 156,160 170,188 198,194"/>
-    </g>
-    <rect x="256" y="160" width="30" height="5" rx="2.5" fill="#000" opacity=".3"/>
-    <rect x="466" y="162" width="30" height="5" rx="2.5" fill="#000" opacity=".3"/>
-    <path d="M 512,128 C 514,115 527,109 543,111 C 552,113 553,124 545,129 Z" fill="var(--ex-paint, #e9e9e4)"/>
-    <path d="M 512,128 C 514,115 527,109 543,111 C 552,113 553,124 545,129 Z" fill="url(#${uid}-shade)"/>
-    <path d="M 514,128 L 544,129" stroke="#1b1d21" stroke-width="3"/>
-    <path class="headlight" d="M 698,157 C 720,164 738,175 748,193" fill="none" stroke="#eef6ff" stroke-width="3.5" stroke-linecap="round" filter="url(#${uid}-glow)"/>
-    <path d="M 726,214 L 749,219" stroke="#26292e" stroke-width="6" stroke-linecap="round"/>
-    <path class="taillight" d="M 51,166 C 54,160 60,155 70,152" fill="none" stroke="#e0212f" stroke-width="5" stroke-linecap="round" filter="url(#${uid}-glow)"/>
-    <g class="port"><rect x="96" y="140" width="16" height="11" rx="3" fill="#1b1d21"/><circle class="port-glow" cx="104" cy="145.5" r="9" fill="var(--ex-charge, #4caf50)" opacity=".85" filter="url(#${uid}-glow)"/></g>
-    <path d="M 671,275 A 64 64 0 1 0 559,275 Z M 223,275 A 64 64 0 1 0 111,275 Z" fill="#0b0c0e"/>
-    ${wheel(167)}${wheel(615)}
-  </svg>`;
+/* The EX2 photo, repainted. Done once per colour in a canvas and cached as
+ * a data URL, so a state update never redoes it. */
+const CAR_IMG = "/ex_control/ex2.webp";
+const CAR_MASK = "/ex_control/ex2-mask.png";
+// The photo's paint is white: its median brightness. Below it is shade,
+// above 0.93 is a highlight and stays white whatever the colour.
+const PAINT_REF = 0.8;
+
+const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const smoothstep = (e0, e1, x) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+const loadImage = (src) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+let carSources = null;
+const paintCache = new Map();
+
+const paintedCar = (paint, roof) => {
+  const key = `${paint}|${roof}`;
+  if (!paintCache.has(key)) {
+    paintCache.set(
+      key,
+      (async () => {
+        carSources = carSources || Promise.all([loadImage(CAR_IMG), loadImage(CAR_MASK)]);
+        const [img, mask] = await carSources;
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(mask, 0, 0);
+        const m = ctx.getImageData(0, 0, w, h).data;
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0);
+        const frame = ctx.getImageData(0, 0, w, h);
+        const d = frame.data;
+        const p = hexToRgb(paint);
+        const r = hexToRgb(roof);
+        for (let i = 0; i < d.length; i += 4) {
+          const mp = m[i] / 255;
+          if (mp === 0) continue;
+          const mr = m[i + 1] / 255;
+          const L = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+          const shade = Math.min(Math.max(L / PAINT_REF, 0), 1.15);
+          const spec = smoothstep(0.93, 1, L) * 0.85;
+          for (let k = 0; k < 3; k++) {
+            const target = (p[k] * (1 - mr) + r[k] * mr) / 255;
+            let v = target * shade;
+            v = Math.min(1, v + (1 - v) * spec);
+            d[i + k] = d[i + k] * (1 - mp) + v * 255 * mp;
+          }
+        }
+        ctx.putImageData(frame, 0, 0);
+        return canvas.toDataURL("image/webp", 0.92);
+      })().catch(() => null)
+    );
+  }
+  return paintCache.get(key);
 };
 
 const STYLE = `
@@ -475,7 +465,7 @@ const STYLE = `
     overflow: hidden;
     cursor: pointer;
   }
-  .image img, .image svg {
+  .image img {
     width: 100%;
     display: block;
     object-fit: cover;
@@ -485,13 +475,9 @@ const STYLE = `
     margin-top: calc(-1 * var(--image-crop-top, 0%));
     margin-bottom: calc(-1 * var(--image-crop-bottom, 0%));
   }
-  .image.charging img, .image.charging svg { animation: chargingImagePulse 2.2s ease-in-out infinite; }
-  .image svg .port { display: none; }
-  .image.charging svg .port { display: inline; }
-  .image.charging svg .port-glow { animation: portPulse 1.4s ease-in-out infinite; }
-  .image svg .headlight { opacity: 0.55; }
-  .image.moving svg .headlight, .image.moving svg .taillight { opacity: 1; }
-  .image svg .taillight { opacity: 0.6; }
+  .image.charging img { animation: chargingImagePulse 2.2s ease-in-out infinite; }
+  /* Hidden until its paint is ready, so it never flashes white first. */
+  .image img.car:not([src]) { visibility: hidden; aspect-ratio: 829 / 559; }
 
   .map {
     border-radius: var(--ha-border-radius-lg, 12px);
@@ -569,10 +555,9 @@ const STYLE = `
   @keyframes chargingBarPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
   @keyframes chargingSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
   @keyframes chargingImagePulse { 0%, 100% { filter: brightness(1) saturate(1); } 50% { filter: brightness(1.06) saturate(1.1); } }
-  @keyframes portPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) {
     .indicator.charging, .bar-wrap.charging .bar-level, .bar-wrap.charging .bar-level::after,
-    .image.charging img, .image.charging svg, .image.charging svg .port-glow { animation: none; }
+    .image.charging img { animation: none; }
   }
 `;
 
@@ -583,8 +568,6 @@ class ExControlVehicleCard extends HTMLElement {
     this._vehicles = null;
     this._vehiclesFetchedAt = 0;
     this._fetchInFlight = null;
-    // One id per card, so two cards' SVG gradients never collide.
-    this._uid = this._uid || `ex${Math.random().toString(36).slice(2, 8)}`;
     if (this._hass) this._maybeFetchVehicles();
     if (this.shadowRoot) this._render();
   }
@@ -983,11 +966,24 @@ class ExControlVehicleCard extends HTMLElement {
       const cls = `image${charging ? " charging" : ""}${moving ? " moving" : ""}`;
       const inner = imageUrl
         ? `<img alt="${escapeHtml(vehicle.name || "EX2")}" src="${escapeHtml(imageUrl)}">`
-        : carSvg(this._uid);
-      this._setHtml(
-        imageEl,
-        `<div class="${cls}" style="--ex-paint:${paint};--ex-roof:${roof}" data-entity-id="${escapeHtml(target)}">${inner}</div>`
-      );
+        : `<img class="car" alt="Geely EX2">`;
+      this._setHtml(imageEl, `<div class="${cls}" data-entity-id="${escapeHtml(target)}">${inner}</div>`);
+      if (!imageUrl) {
+        // The data URL is set on the element, not written into the HTML, so
+        // the render cache never compares a 100 kB string per update.
+        const key = `${paint}|${roof}`;
+        if (this._carKey !== key) {
+          this._carKey = key;
+          this._carSrc = null;
+          paintedCar(paint, roof).then((url) => {
+            if (this._carKey !== key) return;
+            this._carSrc = url || CAR_IMG;
+            this._render();
+          });
+        }
+        const img = imageEl.querySelector("img.car");
+        if (img && this._carSrc && img.getAttribute("src") !== this._carSrc) img.setAttribute("src", this._carSrc);
+      }
     } else {
       this._setHtml(imageEl, "");
     }

@@ -25,3 +25,6 @@ async def test_card_served_and_registered(hass: HomeAssistant, hass_client) -> N
     r = await client.get("/ex_control/ex-control-vehicle-card.js")
     assert r.status == 200
     assert "customElements.define" in await r.text()
+    for name, kind in (("ex2.webp", "image/webp"), ("ex2-mask.png", "image/png")):
+        r = await client.get(f"/ex_control/{name}")
+        assert r.status == 200 and r.content_type == kind, (name, r.status, r.content_type)

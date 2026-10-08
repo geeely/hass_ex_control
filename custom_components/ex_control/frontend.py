@@ -39,6 +39,7 @@ from .const import CONF_CAR_ID, CONF_STREAM, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 CARD_FILE = "ex-control-vehicle-card.js"
+CARD_ASSETS = ("ex2.webp", "ex2-mask.png")
 _STATIC_URL = f"/{DOMAIN}/{CARD_FILE}"
 _CARD_PATH = Path(__file__).parent / "frontend" / CARD_FILE
 _MANIFEST_PATH = Path(__file__).parent / "manifest.json"
@@ -126,8 +127,13 @@ async def async_setup_frontend(hass: HomeAssistant) -> None:
         from homeassistant.components.http import StaticPathConfig
 
         if await hass.async_add_executor_job(_CARD_PATH.exists):
+            # The card, and the photo it repaints (see paintedCar in the card).
             await hass.http.async_register_static_paths(
                 [StaticPathConfig(_STATIC_URL, str(_CARD_PATH), True)]
+                + [
+                    StaticPathConfig(f"/{DOMAIN}/{name}", str(_CARD_PATH.parent / name), True)
+                    for name in CARD_ASSETS
+                ]
             )
         else:
             _LOGGER.warning("Card file missing at %s", _CARD_PATH)

@@ -66,7 +66,7 @@ roof: black                # body (default) | black, for the two-tone cars
 license_plate: CA 123-456
 ```
 
-It shows the car (an EX2 drawing in your paint colour), lock / charging /
+It shows the car (a photo of the EX2, repainted in your colour in the browser), lock / charging /
 A/C / driving / 12V / camera indicators, battery and range with a charging
 estimate, climate and lock buttons, a mini map and quick-info tiles. Taps open
 the entity, the buttons toggle the car's helpers.
@@ -76,7 +76,7 @@ Configuration on the device page), so set them once and every card follows;
 `paint:` / `roof:` on a card override them. With one car it needs no setup. With two, pick the car's mobile-app device, or
 set `prefix` to the car's entity prefix. Other options: `paint_entity` (an
 input_select holding a paint name or `#rrggbb`, for automations),
-`image_url` (your own photo instead of the drawing), `image_zoom`,
+`image_url` (your own photo instead), `image_zoom`,
 `image_crop_top` / `image_crop_bottom`, `map_height`, and `show_*` switches
 for each section.
 

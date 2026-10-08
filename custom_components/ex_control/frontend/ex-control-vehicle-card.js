@@ -198,6 +198,7 @@ const TRANSLATIONS = {
     camera_live: "live",
     camera_idle: "idle",
     camera_start: "Camera",
+    open_device: "Open the car's device page",
     camera_starting: "Starting…",
     camera_stop: "Stop camera",
     fob_watch: "Key fob watch",
@@ -340,6 +341,16 @@ const STYLE = `
   }
   .plate:empty { display: none; }
   #main-wrapper { display: grid; gap: var(--ha-space-3, 12px); }
+  .card-header[data-navigate] {
+    --mdc-icon-size: 24px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    width: fit-content;
+  }
+  .card-header[data-navigate]:hover, .card-header[data-navigate]:focus-visible { color: var(--primary-color); outline: none; }
+  .card-header .chevron { color: var(--secondary-text-color); }
   .plate:not(:empty) + #main-wrapper { margin-top: var(--ha-space-3, 12px); }
   #main-wrapper > :empty { display: none; }
 
@@ -750,7 +761,14 @@ class ExControlVehicleCard extends HTMLElement {
     const insideTileIcon = (node) => node instanceof Element && Boolean(node.closest("ha-tile-icon"));
     // ha-tile-icon runs Home Assistant's action handler, which cancels the
     // synthesized click on touch devices, so its taps arrive as "action" events.
+    const navigateFrom = (node) =>
+      node instanceof Element ? node.closest("[data-navigate]")?.getAttribute("data-navigate") || "" : "";
     this.shadowRoot.addEventListener("click", (event) => {
+      const path = navigateFrom(event.target);
+      if (path) {
+        this._navigate(path);
+        return;
+      }
       const toggle = toggleFrom(event.target);
       if (toggle) {
         this._toggle(toggle);
@@ -766,12 +784,24 @@ class ExControlVehicleCard extends HTMLElement {
     this.shadowRoot.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       const node = event.target;
+      const path = navigateFrom(node);
+      if (path) {
+        event.preventDefault();
+        this._navigate(path);
+        return;
+      }
       if (!(node instanceof Element) || node.getAttribute("role") !== "button") return;
       const entityId = entityIdFrom(node);
       if (!entityId) return;
       event.preventDefault();
       this._openMoreInfo(entityId);
     });
+  }
+
+  /** Home Assistant's own in-app navigation: no page reload. */
+  _navigate(path) {
+    history.pushState(null, "", path);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
   }
 
   _toggle(entityId) {
@@ -933,7 +963,27 @@ class ExControlVehicleCard extends HTMLElement {
 
     const showTitle = boolConfig(cfg, "show_title", true);
     this._setTitleVisible(showTitle);
-    this._nameEl.textContent = showTitle ? vehicle.name || "EX2" : "";
+    const nameKey = `${showTitle}|${vehicle.name}|${vehicle.device_id}`;
+    if (this._nameKey !== nameKey) {
+      this._nameKey = nameKey;
+      this._nameEl.textContent = showTitle ? vehicle.name || "EX2" : "";
+      // The name opens the car's device page, where every entity, the paint
+      // and the repairs are.
+      if (showTitle && vehicle.device_id) {
+        this._nameEl.dataset.navigate = `/config/devices/device/${vehicle.device_id}`;
+        this._nameEl.title = t("open_device");
+        this._nameEl.setAttribute("role", "link");
+        this._nameEl.tabIndex = 0;
+        const chevron = document.createElement("ha-icon");
+        chevron.setAttribute("icon", "mdi:chevron-right");
+        chevron.className = "chevron";
+        this._nameEl.appendChild(chevron);
+      } else {
+        delete this._nameEl.dataset.navigate;
+        this._nameEl.removeAttribute("role");
+        this._nameEl.removeAttribute("title");
+      }
+    }
     $("plate").textContent = cfg.license_plate || "";
 
     // ---- what the car is doing -------------------------------------------
@@ -1182,6 +1232,8 @@ class ExControlVehicleCard extends HTMLElement {
   _renderMessage(message) {
     if (!this.shadowRoot) return;
     this._setTitleVisible(true);
+    this._nameKey = null;
+    delete this._nameEl.dataset.navigate;
     this._nameEl.textContent = "EX Control";
     this.shadowRoot.getElementById("plate").textContent = message;
     for (const id of ["indicators", "images", "range_info", "controls", "mini_map", "buttons"]) {

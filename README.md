@@ -72,7 +72,8 @@ estimate, climate, lock and camera buttons, a mini map and quick-info tiles. The
 Camera button asks the car to start sending ("All" cameras, or the one set
 in `camera_option`); while it sends, the live video replaces the photo
 (`show_live: false` to keep the photo). Tap again to stop. Taps open
-the entity, the buttons toggle the car's helpers.
+the entity, the buttons toggle the car's controls, and the car's name opens
+its device page.
 
 The paint comes from the car device's **Paint** and **Roof** selects (under
 Configuration on the device page), so set them once and every card follows;

@@ -68,7 +68,10 @@ license_plate: CA 123-456
 
 It shows the car (a photo of the EX2, repainted in your colour in the browser), lock / charging /
 A/C / driving / 12V / camera indicators, battery and range with a charging
-estimate, climate and lock buttons, a mini map and quick-info tiles. Taps open
+estimate, climate, lock and camera buttons, a mini map and quick-info tiles. The
+Camera button asks the car to start sending ("All" cameras, or the one set
+in `camera_option`); while it sends, the live video replaces the photo
+(`show_live: false` to keep the photo). Tap again to stop. Taps open
 the entity, the buttons toggle the car's helpers.
 
 The paint comes from the car device's **Paint** and **Roof** selects (under

@@ -197,6 +197,9 @@ const TRANSLATIONS = {
     camera: "Camera",
     camera_live: "live",
     camera_idle: "idle",
+    camera_start: "Camera",
+    camera_starting: "Starting…",
+    camera_stop: "Stop camera",
     fob_watch: "Key fob watch",
     on: "on",
     off: "off",
@@ -231,7 +234,9 @@ const TRANSLATIONS = {
     "editor.image_zoom": "Image zoom",
     "editor.show_map": "Show mini map",
     "editor.map_height": "Mini map height",
-    "editor.show_controls": "Show climate and lock controls",
+    "editor.show_controls": "Show climate, lock and camera controls",
+    "editor.camera_option": "Camera button shows",
+    "editor.show_live": "Show the live camera in place of the photo",
     "editor.show_buttons": "Show quick info tiles",
   },
 };
@@ -476,6 +481,8 @@ const STYLE = `
     margin-bottom: calc(-1 * var(--image-crop-bottom, 0%));
   }
   .image.charging img { animation: chargingImagePulse 2.2s ease-in-out infinite; }
+  .image.live { aspect-ratio: 16 / 9; background: #000; }
+  .image.live > * { --ha-card-border-width: 0; --ha-card-border-radius: 0; --ha-card-background: #000; --card-background-color: #000; display: block; }
   /* Hidden until its paint is ready, so it never flashes white first. */
   .image img.car:not([src]) { visibility: hidden; aspect-ratio: 829 / 559; }
 
@@ -629,6 +636,17 @@ class ExControlVehicleCard extends HTMLElement {
         { name: "show_map", selector: { boolean: {} } },
         { name: "map_height", selector: { number: { mode: "box", unit_of_measurement: "px" } } },
         { name: "show_controls", selector: { boolean: {} } },
+        {
+          name: "camera_option",
+          selector: {
+            select: {
+              mode: "dropdown",
+              // The car's Camera select options (HassCamera.OPTIONS), minus Off.
+              options: ["All", "Top left", "Top right", "Bottom left", "Bottom right"],
+            },
+          },
+        },
+        { name: "show_live", selector: { boolean: {} } },
         { name: "show_buttons", selector: { boolean: {} } },
       ],
       computeLabel: (schema) => {
@@ -759,6 +777,14 @@ class ExControlVehicleCard extends HTMLElement {
   _toggle(entityId) {
     const [domain] = entityId.split(".");
     if (!this._hass || !domain) return;
+    if (domain === "select" || domain === "input_select") {
+      // The car's Camera select: ask for a camera, or Off to stop. The car
+      // only sends video while this is not Off.
+      const current = String(this._hass.states?.[entityId]?.state || "Off");
+      const want = current.toLowerCase() === "off" ? this._config?.camera_option || "All" : "Off";
+      this._hass.callService(domain, "select_option", { entity_id: entityId, option: want });
+      return;
+    }
     if (domain === "lock") {
       // Locks have no toggle service.
       const locked = this._hass.states?.[entityId]?.state === "locked";
@@ -803,6 +829,35 @@ class ExControlVehicleCard extends HTMLElement {
     } catch {
       return null;
     }
+  }
+
+  /** The car's camera, live, in place of the photo, through HA's own player. */
+  _renderLive(target, hass, cameraEntityId) {
+    if (this._liveCard && this._liveEntity === cameraEntityId && target.contains(this._liveCard)) {
+      this._liveCard.hass = hass;
+      return;
+    }
+    target._lastHtml = undefined;
+    this._liveEntity = cameraEntityId;
+    const token = (this._liveToken || 0) + 1;
+    this._liveToken = token;
+    const wrap = document.createElement("div");
+    wrap.className = "image live";
+    target.replaceChildren(wrap);
+    (async () => {
+      const helpers = window.loadCardHelpers ? await window.loadCardHelpers() : null;
+      if (!helpers?.createCardElement || this._liveToken !== token) return;
+      const card = helpers.createCardElement({
+        type: "picture-entity",
+        entity: cameraEntityId,
+        camera_view: "live",
+        show_name: false,
+        show_state: false,
+      });
+      card.hass = this._hass;
+      this._liveCard = card;
+      wrap.replaceChildren(card);
+    })();
   }
 
   _renderMap(target, hass, trackerEntityId, t) {
@@ -898,6 +953,8 @@ class ExControlVehicleCard extends HTMLElement {
     const locked = isOn(read("helper_locked"));
     const acOn = isOn(read("ac"));
     const camLive = normalizeState(read("camera")) === "streaming";
+    // Asked for on the car's Camera select, but not necessarily sending yet.
+    const camRequested = hasUsableState(read("helper_camera")) && normalizeState(read("helper_camera")) !== "off";
     const aux = toNumber(read("aux_12v"));
     const auxLow = Number.isFinite(aux) && aux > 0 && aux < 11.8;
 
@@ -959,7 +1016,16 @@ class ExControlVehicleCard extends HTMLElement {
     imageEl.style.setProperty("--image-crop-top", `${numberConfig(cfg, "image_crop_top", 0)}%`);
     imageEl.style.setProperty("--image-crop-bottom", `${numberConfig(cfg, "image_crop_bottom", 0)}%`);
     imageEl.style.setProperty("--image-zoom", numberConfig(cfg, "image_zoom", 100) / 100);
-    if (boolConfig(cfg, "show_image", true)) {
+    const showLive = boolConfig(cfg, "show_live", true) && camLive && entities.camera;
+    if (showLive) {
+      this._renderLive(imageEl, hass, entities.camera);
+    } else if (boolConfig(cfg, "show_image", true)) {
+      if (this._liveCard) {
+        // Back from live video: the section was written directly, so the
+        // render cache must not think the photo is still there.
+        this._liveCard = null;
+        imageEl._lastHtml = undefined;
+      }
       const { paint, roof } = resolvePaint(cfg, hass, entities);
       const imageUrl = typeof cfg.image_url === "string" ? cfg.image_url.trim() : "";
       const target = ent("camera") || ent("soc");
@@ -1039,6 +1105,14 @@ class ExControlVehicleCard extends HTMLElement {
       ]
         .filter(([key]) => entities[key])
         .map(([key, icon, label]) => ({ icon, label, entity: entities[key], on: isOn(read(key)) }));
+      if (entities.helper_camera) {
+        controls.push({
+          icon: camLive ? "mdi:stop-circle-outline" : "mdi:cctv",
+          label: camLive ? t("camera_stop") : camRequested ? t("camera_starting") : t("camera_start"),
+          entity: entities.helper_camera,
+          on: camRequested || camLive,
+        });
+      }
       this._setHtml($("controls"), controls.length ? `<div class="controls">${controls.map(controlButton).join("")}</div>` : "");
     } else {
       this._setHtml($("controls"), "");
@@ -1114,6 +1188,7 @@ class ExControlVehicleCard extends HTMLElement {
       this._setHtml(this.shadowRoot.getElementById(id), "");
     }
     this._cachedMapCard = null;
+    this._liveCard = null;
   }
 }
 

@@ -1,3 +1,5 @@
+<img src="custom_components/ex_control/brand/icon.png" alt="" width="96" align="right">
+
 # EX Control for Home Assistant
 
 The whole car in Home Assistant as one device: readings, climate and charging
@@ -103,6 +105,12 @@ The card's layout is adapted from the BMW CarData integration's vehicle card
   Home Assistant's go2rtc on loopback; the secret is random per start.
 - New viewers get everything since the last key frame first, so they start
   at once.
+
+## Icon
+
+`custom_components/ex_control/brand/` holds the integration's icon and logo
+(Home Assistant 2026.3 and later shows them; older versions show a
+placeholder). They are original artwork, not Geely's logo.
 
 ## Licence
 

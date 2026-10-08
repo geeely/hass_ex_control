@@ -243,7 +243,7 @@ async def test_car_app_setup_calls(hass: HomeAssistant, hass_ws_client, hass_adm
 
     await ws.send_json_auto_id({"type": "manifest/get", "integration": "ex_control"})
     res = await ws.receive_json()
-    assert res["success"] and res["result"]["version"] == "0.3.1"
+    assert res["success"] and res["result"]["version"] == "0.3.2"
 
     await ws.send_json_auto_id({"type": "config_entries/get", "domain": "ex_control"})
     res = await ws.receive_json()

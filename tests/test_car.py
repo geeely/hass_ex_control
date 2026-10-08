@@ -230,3 +230,46 @@ async def test_card_vehicle_list(hass: HomeAssistant, hass_ws_client) -> None:
     assert e["device_tracker"] == "device_tracker.geely_location"
     assert e["paint"] == "select.geely_paint"
     assert e["camera"] == "camera.geely_live_camera"
+
+
+async def test_car_app_setup_calls(hass: HomeAssistant, hass_ws_client, hass_admin_user, hass_client) -> None:
+    """The exact calls the car's one-tap setup makes (HassIntegrationSetup)."""
+    await _platforms(hass)
+    assert await async_setup_component(hass, "config", {})
+    # Real HA registers views late without complaint; the test server freezes
+    # its routes when the client starts, so load the integration first.
+    assert await async_setup_component(hass, DOMAIN, {})
+    ws = await hass_ws_client(hass)
+
+    await ws.send_json_auto_id({"type": "manifest/get", "integration": "ex_control"})
+    res = await ws.receive_json()
+    assert res["success"] and res["result"]["version"] == "0.3.0"
+
+    await ws.send_json_auto_id({"type": "config_entries/get", "domain": "ex_control"})
+    res = await ws.receive_json()
+    assert res["success"] and res["result"] == []
+
+    client = await hass_client()
+    r = await client.post("/api/config/config_entries/flow", json={"handler": "ex_control"})
+    step = await r.json()
+    assert r.status == 200 and step["type"] == "menu", step
+    r = await client.post(f"/api/config/config_entries/flow/{step['flow_id']}", json={"next_step_id": "hub"})
+    step = await r.json()
+    assert step["type"] == "form", step
+    r = await client.post(f"/api/config/config_entries/flow/{step['flow_id']}", json={})
+    step = await r.json()
+    assert step["type"] == "create_entry", step
+    await hass.async_block_till_done()
+
+    # Tapping again finds it set up.
+    await ws.send_json_auto_id({"type": "config_entries/get", "domain": "ex_control"})
+    assert len((await ws.receive_json())["result"]) == 1
+    r = await client.post("/api/config/config_entries/flow", json={"handler": "ex_control"})
+    step = await r.json()
+    r = await client.post(f"/api/config/config_entries/flow/{step['flow_id']}", json={"next_step_id": "hub"})
+    step = await r.json()
+    assert step["type"] == "abort" and step["reason"] == "already_configured"
+
+    # And the car can now say hello.
+    await ws.send_json_auto_id(hello())
+    assert (await ws.receive_json())["success"]

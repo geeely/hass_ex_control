@@ -14,6 +14,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import CONF_CAR_ID
 from .controls import CarControl, controls_of
 from .entity import CarEntity
+from .solar import MODE_OFF, MODES, controller
 
 # The EX2's factory paints; the card turns these names into colours.
 PAINTS = ["Moon White", "Star Silver", "Comet Grey", "Nebula Beige", "Aurora Green", "Nova Pink"]
@@ -28,6 +29,7 @@ async def async_setup_entry(
     entities: list[SelectEntity] = [CarSelect(hass, entry, d) for d in controls_of(entry, "select")]
     entities.append(Appearance(hass, entry, "paint", {"name": "Paint", "icon": "mdi:palette"}, PAINTS))
     entities.append(Appearance(hass, entry, "roof", {"name": "Roof", "icon": "mdi:car-select"}, ROOFS))
+    entities.append(SolarMode(hass, entry))
     async_add_entities(entities)
 
 
@@ -61,4 +63,30 @@ class Appearance(CarEntity, SelectEntity, RestoreEntity):
 
     async def async_select_option(self, option: str) -> None:
         self._attr_current_option = option
+        self.async_write_ha_state()
+
+
+class SolarMode(CarEntity, SelectEntity, RestoreEntity):
+    """Off, Observe (decide and report only) or On (steer the car's charging)."""
+
+    _attr_options = MODES
+
+    def __init__(self, hass, entry) -> None:
+        super().__init__(hass, entry, "solar_mode", {"name": "Solar charging", "icon": "mdi:solar-power-variant"})
+        self.entry_id = entry.entry_id
+
+    @property
+    def current_option(self) -> str:
+        c = controller(self.hass, self.entry_id)
+        return c.mode if c else MODE_OFF
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if (last := await self.async_get_last_state()) and last.state in MODES:
+            if c := controller(self.hass, self.entry_id):
+                c.set_mode(last.state)
+
+    async def async_select_option(self, option: str) -> None:
+        if c := controller(self.hass, self.entry_id):
+            c.set_mode(option)
         self.async_write_ha_state()

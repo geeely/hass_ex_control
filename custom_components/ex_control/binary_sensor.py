@@ -27,6 +27,11 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
+# Live charging state: an offline car is parked and asleep, so a "charging"
+# kept from before it went would outlive the charge. These read off instead.
+OFF_WHEN_OFFLINE = {"charging", "dc_fast"}
+
+
 def _truthy(value: Any) -> bool | None:
     if value is None:
         return None
@@ -52,6 +57,8 @@ class CarBinarySensor(CarEntity, BinarySensorEntity, RestoreEntity):
 
     @property
     def is_on(self) -> bool | None:
+        if self.slug in OFF_WHEN_OFFLINE and not self.car.connected:
+            return False
         value = _truthy(self.car.sensors.get(self.slug))
         return self._restored if value is None else value
 

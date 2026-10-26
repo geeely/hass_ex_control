@@ -95,6 +95,55 @@ resources:
 The card's layout is adapted from the BMW CarData integration's vehicle card
 (BSD 2-clause; see `frontend/LICENSE-bmw-cardata.txt`).
 
+## Solar charging
+
+Charges the car from spare solar and keeps the house battery for the house.
+It steers the car's **Charge current limit** and **Charging** controls, so the
+car's "Let Home Assistant control climate and charging" must be on.
+
+Set it up under the car's entry: Settings > Devices & services > EX Control >
+the car > **Configure**. Pick the house's grid power (positive when importing),
+solar production, house battery level and house battery power, and set the
+house battery size, the panels' maximum output, the charge current range, the
+time the car is usually unplugged by, the car's minimum battery and whether
+grid charging is allowed below it.
+
+Then use the car's **Solar charging** select:
+
+- **Observe** works everything out and shows it on **Solar charging status**
+  and **Solar charging target**, without touching the car. Run it for a day
+  first.
+- **On** steers the car. While it is on it owns the charge current and the
+  charging switch; a change made by hand is put back.
+- **Off** leaves the car alone.
+
+How it decides:
+
+- **Mornings** (sunrise to the unplug time) the car charges and does not stop,
+  at least at the minimum current. A really cloudy morning (for 15 minutes,
+  the grid or house battery paying for over half the car) stops it, but only
+  while the car is above its minimum battery.
+- **Afternoons** the car only takes what the house battery does not need to be
+  full by sunset, plus anything exported. It stops after five minutes without
+  enough for the minimum current.
+- **Nights** it stays off, unless grid charging is allowed and the car is
+  below its minimum battery; then it charges at the minimum current.
+- Solar production only shows what is used, so with the house battery full
+  the controller raises the car one amp at a time until the grid or house
+  battery starts paying, then steps back. It tries again later, waiting
+  longer each time a try fails (up to half an hour).
+- **A solar forecast is optional** (Open-Meteo Solar Forecast's "energy
+  production remaining today" and "power production now", or similar). With
+  it, a day too poor to fill the house battery and run the house is known in
+  the morning, so the car stops straight away instead of after 15 cloudy
+  minutes, and the search for held-back solar stops near what the sun is
+  forecast to give now.
+
+The car's **Connected** sensor shows when it is online; its history is the
+online/offline log. While the car is offline, **Power**, **Charge power** and
+**Charge rate** read 0 and **Charging** and **DC fast charging** read off,
+rather than keeping their last value.
+
 ## How it works
 
 - WebSocket `ex_control/hello` (admin token): the car's id, name, and the

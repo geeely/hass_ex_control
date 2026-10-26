@@ -36,5 +36,51 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar charging",
+        "description": "Charge this car from spare solar and keep the house battery for the house. Pick the house sensors, then set the car's Solar charging control to Observe for a day (it reports what it would do) and then On.\n\nMornings, until the departure time, the car charges and does not stop, unless the morning is really cloudy and the car is above its minimum battery. Afternoons it only takes spare solar, after the house battery is on track to be full by sunset. At night it only charges if grid charging is allowed and the car is below its minimum battery.",
+        "data": {
+          "solar_grid_entity": "Grid power (positive when importing)",
+          "solar_production_entity": "Solar production",
+          "solar_house_battery_soc_entity": "House battery level",
+          "solar_house_battery_power_entity": "House battery power",
+          "solar_house_battery_power_sign": "House battery power is positive when",
+          "solar_house_battery_kwh": "House battery size",
+          "solar_max_w": "Maximum solar production",
+          "solar_min_a": "Minimum charge current",
+          "solar_max_a": "Maximum charge current",
+          "solar_voltage": "Supply voltage",
+          "solar_departure": "Usually unplugged by",
+          "solar_car_min_soc": "Car minimum battery",
+          "solar_car_target_soc": "Stop when the car reaches",
+          "solar_grid_charge": "Allow grid charging below the minimum battery",
+          "solar_tolerance_w": "Grid and house battery draw tolerated",
+          "solar_forecast_remaining_entity": "Forecast: energy remaining today (optional)",
+          "solar_forecast_now_entity": "Forecast: power now (optional)"
+        },
+        "data_description": {
+          "solar_max_w": "The most the panels produce on a clear day. Used to look for production the inverter is holding back.",
+          "solar_max_a": "Never more than the charger and its circuit are rated for.",
+          "solar_departure": "Until this time the car charges without stopping.",
+          "solar_tolerance_w": "Draw below this counts as noise, not a deficit.",
+          "solar_forecast_remaining_entity": "Open-Meteo Solar Forecast's \"Estimated energy production - remaining today\". Lets a poor day be seen in the morning, before the clouds show up in the readings.",
+          "solar_forecast_now_entity": "Open-Meteo Solar Forecast's \"Estimated power production - now\". Keeps the search for held-back solar near what the sun can give now."
+        }
+      }
+    },
+    "abort": {
+      "not_a_car": "Solar charging is set per car: open the options of the car's entry."
+    }
+  },
+  "selector": {
+    "hb_sign": {
+      "options": {
+        "charging": "Charging",
+        "discharging": "Discharging"
+      }
+    }
   }
 }

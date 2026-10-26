@@ -17,13 +17,56 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    BooleanSelector,
+    EntitySelector,
+    EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+    TimeSelector,
+)
 
-from .const import CONF_CAR_ID, CONF_HUB, CONF_NAME, CONF_STREAM, DEFAULT_STREAM, DOMAIN
+from .const import (
+    CONF_CAR_ID,
+    CONF_HUB,
+    CONF_NAME,
+    CONF_STREAM,
+    DEFAULT_STREAM,
+    DOMAIN,
+    SIGN_CHARGING,
+    SIGN_DISCHARGING,
+    SOLAR_CAPACITY,
+    SOLAR_CAR_MIN_SOC,
+    SOLAR_CAR_TARGET_SOC,
+    SOLAR_DEPARTURE,
+    SOLAR_FORECAST_NOW,
+    SOLAR_FORECAST_REMAINING,
+    SOLAR_GRID,
+    SOLAR_GRID_CHARGE,
+    SOLAR_HB_POWER,
+    SOLAR_HB_POWER_SIGN,
+    SOLAR_HB_SOC,
+    SOLAR_MAX_A,
+    SOLAR_MAX_W,
+    SOLAR_MIN_A,
+    SOLAR_PRODUCTION,
+    SOLAR_TOLERANCE,
+    SOLAR_VOLTAGE,
+)
 
 
 class ExControlFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return SolarOptionsFlow()
 
     async def async_step_integration_discovery(self, discovery_info: dict[str, Any]) -> ConfigFlowResult:
         await self.async_set_unique_id(discovery_info[CONF_CAR_ID])
@@ -50,3 +93,48 @@ class ExControlFlow(ConfigFlow, domain=DOMAIN):
             step_id="camera",
             data_schema=vol.Schema({vol.Required(CONF_STREAM, default=DEFAULT_STREAM): str}),
         )
+
+
+def _num(lo: float, hi: float, step: float, unit: str) -> NumberSelector:
+    return NumberSelector(NumberSelectorConfig(min=lo, max=hi, step=step, unit_of_measurement=unit, mode=NumberSelectorMode.BOX))
+
+
+SENSOR = EntitySelector(EntitySelectorConfig(domain="sensor"))
+
+
+class SolarOptionsFlow(OptionsFlow):
+    """Solar charging, per car: the house sensors and the limits (solar.py)."""
+
+    async def async_step_init(self, user_input: dict | None = None) -> ConfigFlowResult:
+        if CONF_CAR_ID not in self.config_entry.data:
+            return self.async_abort(reason="not_a_car")
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        o = self.config_entry.options
+
+        def opt(key: str, default=None) -> dict:
+            return {"default": o[key]} if key in o else ({"default": default} if default is not None else {})
+
+        schema = vol.Schema({
+            vol.Required(SOLAR_GRID, **opt(SOLAR_GRID)): SENSOR,
+            vol.Required(SOLAR_PRODUCTION, **opt(SOLAR_PRODUCTION)): SENSOR,
+            vol.Required(SOLAR_HB_SOC, **opt(SOLAR_HB_SOC)): SENSOR,
+            vol.Required(SOLAR_HB_POWER, **opt(SOLAR_HB_POWER)): SENSOR,
+            vol.Required(SOLAR_HB_POWER_SIGN, **opt(SOLAR_HB_POWER_SIGN, SIGN_CHARGING)): SelectSelector(
+                SelectSelectorConfig(options=[SIGN_CHARGING, SIGN_DISCHARGING], translation_key="hb_sign")
+            ),
+            vol.Required(SOLAR_CAPACITY, **opt(SOLAR_CAPACITY, 10)): _num(1, 200, 0.1, "kWh"),
+            vol.Required(SOLAR_MAX_W, **opt(SOLAR_MAX_W, 5000)): _num(500, 50000, 100, "W"),
+            vol.Required(SOLAR_MIN_A, **opt(SOLAR_MIN_A, 6)): _num(5, 32, 1, "A"),
+            vol.Required(SOLAR_MAX_A, **opt(SOLAR_MAX_A, 16)): _num(5, 32, 1, "A"),
+            vol.Required(SOLAR_VOLTAGE, **opt(SOLAR_VOLTAGE, 230)): _num(100, 250, 1, "V"),
+            vol.Required(SOLAR_DEPARTURE, **opt(SOLAR_DEPARTURE, "12:00:00")): TimeSelector(),
+            vol.Required(SOLAR_CAR_MIN_SOC, **opt(SOLAR_CAR_MIN_SOC, 30)): _num(0, 100, 1, "%"),
+            vol.Required(SOLAR_CAR_TARGET_SOC, **opt(SOLAR_CAR_TARGET_SOC, 100)): _num(10, 100, 1, "%"),
+            vol.Required(SOLAR_GRID_CHARGE, **opt(SOLAR_GRID_CHARGE, False)): BooleanSelector(),
+            vol.Required(SOLAR_TOLERANCE, **opt(SOLAR_TOLERANCE, 150)): _num(0, 2000, 10, "W"),
+            # Optional, and clearable: suggested rather than defaulted.
+            vol.Optional(SOLAR_FORECAST_REMAINING, description={"suggested_value": o.get(SOLAR_FORECAST_REMAINING)}): SENSOR,
+            vol.Optional(SOLAR_FORECAST_NOW, description={"suggested_value": o.get(SOLAR_FORECAST_NOW)}): SENSOR,
+        })
+        return self.async_show_form(step_id="init", data_schema=schema)

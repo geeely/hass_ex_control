@@ -243,7 +243,7 @@ async def test_car_app_setup_calls(hass: HomeAssistant, hass_ws_client, hass_adm
 
     await ws.send_json_auto_id({"type": "manifest/get", "integration": "ex_control"})
     res = await ws.receive_json()
-    assert res["success"] and res["result"]["version"] == "0.3.5"
+    assert res["success"] and res["result"]["version"] == "0.4.0"
 
     await ws.send_json_auto_id({"type": "config_entries/get", "domain": "ex_control"})
     res = await ws.receive_json()
@@ -273,3 +273,25 @@ async def test_car_app_setup_calls(hass: HomeAssistant, hass_ws_client, hass_adm
     # And the car can now say hello.
     await ws.send_json_auto_id(hello())
     assert (await ws.receive_json())["success"]
+
+
+async def test_power_reads_zero_while_offline(hass: HomeAssistant, hass_ws_client) -> None:
+    """Live power flows drop to 0 and charging to off when the car goes; other readings stay."""
+    await _hub(hass)
+    sensors = SENSORS + [
+        {"slug": "charge_power", "name": "Charge power", "binary": False, "unit": "kW", "device_class": "power"},
+    ]
+    ws, _ = await _connect(hass, hass_ws_client, hello(sensors=sensors))
+    await ws.send_json_auto_id({
+        "type": "ex_control/state", "car_id": "ex_0123456789abcdef",
+        "sensors": {"soc": 64, "charge_power": 1.6, "charging": True},
+    })
+    assert (await ws.receive_json())["success"]
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.geely_charge_power").state == "1.6"
+
+    await ws.close()
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.geely_charge_power").state == "0"
+    assert hass.states.get("binary_sensor.geely_charging").state == "off"
+    assert hass.states.get("sensor.geely_battery").state == "64"

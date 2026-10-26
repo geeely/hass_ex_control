@@ -32,6 +32,7 @@ from .const import CONF_CAR_ID, CONF_HUB, DOMAIN
 from .frontend import async_remove_frontend, async_setup_frontend
 from .hub import Hub
 from .link import async_register as async_register_link
+from .solar import async_setup as async_setup_solar
 from .views import IngestView, LiveView
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -81,6 +82,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         dev_reg = dr.async_get(hass)
         if old := dev_reg.async_get_device(identifiers={(DOMAIN, entry.entry_id)}):
             dev_reg.async_remove_device(old.id)
+        # Reads its options every tick, so changing them needs no reload.
+        async_setup_solar(hass, entry)
     await async_setup_frontend(hass)
     await hass.config_entries.async_forward_entry_setups(entry, _platforms(entry))
     return True
